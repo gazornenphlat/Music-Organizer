@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "music-organizer"
+version = "0.1.0"
+description = "FLAC -> M4A conversion, cleanup, MusicBrainz verification, duplicate and Plex dedup tools"
+requires-python = ">=3.10"
+dependencies = [
+    "tqdm>=4.66",
+    "mutagen>=1.47",
+    "musicbrainzngs>=0.7",
+]
+
+[project.optional-dependencies]
+web = ["flask>=3.0"]
+plex = ["plexapi>=4.15"]
+fingerprint = ["pyacoustid>=1.3"]
+trash = ["send2trash>=1.8"]
+dev = ["flask>=3.0", "pytest>=8.0"]
+
+[project.scripts]
+music-pipeline = "music_pipeline:main"
+
+[tool.setuptools]
+py-modules = ["music_pipeline", "toolkit_core", "music_toolkit", "toolkit_web"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

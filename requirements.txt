@@ -1,0 +1,3 @@
+tqdm>=4.66
+mutagen>=1.47
+musicbrainzngs>=0.7

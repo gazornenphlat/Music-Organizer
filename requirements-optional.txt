@@ -1,0 +1,11 @@
+# Recycle Bin support for deletes (Settings -> Use Recycle Bin)
+send2trash>=1.8
+
+# Plex tab
+plexapi>=4.15
+
+# Optional audio-fingerprint duplicate check (also needs fpcalc on PATH)
+pyacoustid>=1.3
+
+# Web app (toolkit_web.py)
+flask>=3.0

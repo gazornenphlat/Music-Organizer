@@ -1,0 +1,53 @@
+# --- Personal data written by the toolkit (keep out of git) ---
+# Settings can contain your Plex token
+music_toolkit_settings.json
+*.tmp
+# MusicBrainz cache, manual matches and the Review queue
+mb_cache*.json
+mb_manual_matches.json
+mb_unmatched.json
+# Move/delete history and beets output
+history/
+beet_import_log.txt
+*.log
+# Reports the Duplicates / Tag health / Plex tabs can export
+dupes_report.txt
+dupes_to_delete.txt
+tag_health.csv
+plex_dedup_plan.txt
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Packaging (PyInstaller etc.) ---
+build/
+dist/
+*.spec
+*.egg-info/
+*.zip
+
+# --- Never commit audio, even test files ---
+*.flac
+*.m4a
+*.mp3
+*.wav
+*.ogg
+*.opus
+*.partial.m4a
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+# Pipeline lock
+music_pipeline.lock

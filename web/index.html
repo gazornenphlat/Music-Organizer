@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#FFFFFF">
+  <title>Music Toolkit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/icons.js"></script>
+</head>
+<body>
+  <header class="app-bar">
+    <div class="brand">
+      <div class="circle c-primary"><iconify-icon icon="solar:music-notes-bold"></iconify-icon></div>
+      <div style="min-width:0">
+        <h1 class="headline-lg" id="title">Pipeline</h1>
+        <div class="caption" id="subtitle">Convert, verify and sort</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="icon-btn" data-go="history" title="Today's history"><iconify-icon icon="solar:history-bold"></iconify-icon></button>
+      <button class="icon-btn" data-go="settings" title="Settings"><iconify-icon icon="solar:settings-bold"></iconify-icon></button>
+    </div>
+  </header>
+
+  <main>
+    <section class="view" id="view-pipeline"></section>
+    <section class="view" id="view-dupes"></section>
+    <section class="view" id="view-review"></section>
+    <section class="view" id="view-more"></section>
+    <section class="view" id="view-health"></section>
+    <section class="view" id="view-plex"></section>
+    <section class="view" id="view-settings"></section>
+    <section class="view" id="view-history"></section>
+  </main>
+
+  <nav class="tab-bar">
+    <button class="tab" data-go="pipeline"><iconify-icon icon="solar:music-notes-bold"></iconify-icon><span>Pipeline</span></button>
+    <button class="tab" data-go="dupes"><iconify-icon icon="solar:copy-bold"></iconify-icon><span>Duplicates</span></button>
+    <div class="fab-slot">
+      <button class="fab" id="fab" title="Run the pipeline"><iconify-icon icon="solar:play-bold" id="fab-icon"></iconify-icon></button>
+      <span class="fab-label" id="fab-label">Run</span>
+    </div>
+    <button class="tab" data-go="review"><iconify-icon icon="solar:checklist-minimalistic-bold"></iconify-icon><span>Review</span></button>
+    <button class="tab" data-go="more"><iconify-icon icon="solar:widget-4-bold"></iconify-icon><span>More</span></button>
+  </nav>
+
+  <div id="overlay-root"></div>
+  <div class="toast-wrap" id="toasts"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
