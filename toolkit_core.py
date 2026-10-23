@@ -467,7 +467,7 @@ def album_health(folder: Path, files: list[Path]):
             issues.append(f"disc {d}: {len(v['tracks'])} of {v['expected_total']} tracks")
 
     folder_art = any(p.stem.lower() in COVER_NAMES and p.suffix.lower() in (".jpg", ".jpeg", ".png")
-                     for p in folder.iterdir() if p.is_file())
+                     for p in folder.rglob("*") if p.is_file())
     embedded = sum(1 for fp, _ in tags if has_embedded_cover(fp))
     if not folder_art and embedded == 0:
         issues.append("no cover art")
@@ -802,6 +802,30 @@ def pipeline_preflight(folder: Path, opts: dict) -> tuple[list[str], list[str]]:
     return errors, warnings
 
 
+class _Patched:
+    """Context manager that sets attributes on a module and restores them on exit.
+
+    Used by run_pipeline() so the monkey-patches it installs on music_pipeline
+    are always undone, even when an exception escapes.
+    """
+
+    def __init__(self, module, values: dict):
+        self.module = module
+        self.values = values
+        self.originals: dict = {}
+
+    def __enter__(self):
+        for key, value in self.values.items():
+            self.originals[key] = getattr(self.module, key, None)
+            setattr(self.module, key, value)
+        return self
+
+    def __exit__(self, *exc):
+        for key in self.values:
+            setattr(self.module, key, self.originals[key])
+        return False
+
+
 def run_pipeline(folder: Path, opts: dict, bus, history, cancel: threading.Event, ask) -> str | None:
     """
     Run conversion and/or cleanup. Blocking; run it on a worker thread.
@@ -838,13 +862,6 @@ def run_pipeline(folder: Path, opts: dict, bus, history, cancel: threading.Event
                 return send2trash(str(a[0]))
             history.write("pipeline", desc.split(" ", 1)[0], desc.split(" ", 1)[-1])
             return fn(*a, **kw)
-
-        mp.act = logged_act
-        mp.DRY_RUN = dry
-        mp.AAC_BITRATE = opts.get("bitrate") or mp.AAC_BITRATE
-        mp.RUN_BEETS_FIRST = bool(opts.get("run_beets"))
-        mp.MB_CONTACT = str(opts.get("contact") or "").strip() or mp.MB_CONTACT
-        mp.musicbrainzngs.set_useragent(mp.MB_APP_NAME, mp.MB_APP_VERSION, mp.MB_CONTACT)
 
         conv = ConvProgress(bus)
 
@@ -903,18 +920,31 @@ def run_pipeline(folder: Path, opts: dict, bus, history, cancel: threading.Event
             eta = elapsed * (100 - pct) / pct if pct > 0.5 else None
             bus.post("beets_progress", pct, albums_done, albums_total, skipped, current, eta)
 
-        mp.BEETS_PROGRESS, mp.CANCEL_EVENT = ui_beets_progress, cancel
-        mp.convert_all, mp.ask_choice = ui_convert_all, ui_ask_choice
-        mp.convert_file, mp.process_folder = guarded_convert_file, guarded_process_folder
+        patches = {
+            "act": logged_act,
+            "DRY_RUN": dry,
+            "AAC_BITRATE": opts.get("bitrate") or mp.AAC_BITRATE,
+            "RUN_BEETS_FIRST": bool(opts.get("run_beets")),
+            "MB_CONTACT": str(opts.get("contact") or "").strip() or mp.MB_CONTACT,
+            "BEETS_PROGRESS": ui_beets_progress,
+            "CANCEL_EVENT": cancel,
+            "convert_all": ui_convert_all,
+            "ask_choice": ui_ask_choice,
+            "convert_file": guarded_convert_file,
+            "process_folder": guarded_process_folder,
+        }
 
-        print(f"\n{'#' * 60}\nSource: {folder}{'  (DRY RUN)' if dry else ''}")
-        if opts.get("convert"):
-            mp.run_conversion(folder, int(opts.get("workers") or mp.DEFAULT_WORKERS), non_interactive=(mode == "c"))
-        if cancel.is_set():
-            raise Cancelled()
-        if opts.get("cleanup"):
-            mp.run_cleanup(folder)
-        print("\nAll done!")
+        with _Patched(mp, patches):
+            mp.musicbrainzngs.set_useragent(mp.MB_APP_NAME, mp.MB_APP_VERSION, mp.MB_CONTACT)
+
+            print(f"\n{'#' * 60}\nSource: {folder}{'  (DRY RUN)' if dry else ''}")
+            if opts.get("convert"):
+                mp.run_conversion(folder, int(opts.get("workers") or mp.DEFAULT_WORKERS), non_interactive=(mode == "c"))
+            if cancel.is_set():
+                raise Cancelled()
+            if opts.get("cleanup"):
+                mp.run_cleanup(folder)
+            print("\nAll done!")
     except Cancelled:
         print("\n■ Stopped by user. Files already processed stay where they were moved; "
               "unconverted FLACs were left untouched.")
@@ -924,9 +954,6 @@ def run_pipeline(folder: Path, opts: dict, bus, history, cancel: threading.Event
         traceback.print_exc()
         err = repr(e)
     finally:
-        mp.convert_file, mp.process_folder, mp.act = _MP_CONVERT_FILE, _MP_PROCESS_FOLDER, _MP_ACT
-        mp.convert_all, mp.ask_choice = _MP_CONVERT_ALL, _MP_ASK_CHOICE
-        mp.BEETS_PROGRESS = mp.CANCEL_EVENT = None
         sys.stdout, sys.stderr = old
         bus.post("pipeline_done", err)
         lock.release()

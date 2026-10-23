@@ -45,10 +45,10 @@ Dependencies: `tqdm mutagen musicbrainzngs flask`; optional `send2trash plexapi 
 - Log every move and delete via `History.write(tab, action, detail)`.
 
 ## UI / design
-- Follow the "Midnight Indigo Glow" design:
-  - **Colours:** `#1A1E2E` background, `#20263A` surface, `#2E3650` border, `#3B82F6` primary, `#22C55E` success, `#EF4444` error, `#EAB308` warning, `#A855F7` violet.
-  - **Typefaces:** Space Grotesk for headings and numbers, Manrope for everything else. No third typeface.
-  - **Glow:** only on primary actions, the active chip and the FAB.
+- Follow the "Ember Pill Mobile" design (light theme):
+  - **Colours:** bg #FFFFFF, surface #FFFFFF, surface-alt #F2F2F7, on-surface #000000, muted #6C6C70, border #E5E5EA, primary #F37F46, success #34C759, error #FF3B30, warning #FF9500, accent-blue #007AFF, accent-indigo #5856D6, accent-yellow #F5C842.
+  - **Typefaces:** Nunito Sans (web) / Manrope + Space Grotesk (desktop fallback). No third typeface.
+  - **Shape language:** pills for actions/nav, 28-32px cards, 14px chips, floating glass tab capsule.
   - **Colours for status:** semantic colours appear only as text or tinted badges, never as solid fills.
 - **Web:**
   - Use the CSS tokens and classes in `style.css`: `card`, `card-elevated`, `btn primary`, `chip`, `segmented`, `badge t-*`, `circle c-*`, `list-row`, `divided`, `progress`.
@@ -64,7 +64,7 @@ Dependencies: `tqdm mutagen musicbrainzngs flask`; optional `send2trash plexapi 
 - When killing a test server by matching the command line, don't use a pattern that also matches your own shell command (it kills itself).
 
 ## Testing
-- No test suite yet. Test with synthetic audio from ffmpeg (`-f lavfi -i sine=...` with `-metadata` tags) in a scratch folder, with a settings file pointing the output folders there.
+- Test suite: `python -m pytest -q` (50 tests). Test with synthetic audio from ffmpeg (`-f lavfi -i sine=...` with `-metadata` tags) in a scratch folder, with a settings file pointing the output folders there.
 - **Web:** run the server and drive `/api/*` with curl. Listen on `/api/events` to check events. Check layout with Playwright screenshots at 1280 px and 390 px wide.
 - **Tk:** run under Xvfb (Python with Tk) and screenshot each notebook tab.
 - **Not yet tested:** Windows, a real Plex server, live MusicBrainz and Discogs. Say so when relevant.

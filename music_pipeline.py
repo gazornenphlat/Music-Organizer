@@ -222,14 +222,17 @@ def unique_dest(dest: Path) -> Path:
 # =============================================================================
 
 def probe_duration(path: Path) -> float | None:
-    r = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
-        capture_output=True, text=True, check=False,
-    )
+    try:
+        r = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+            capture_output=True, text=True, check=False, timeout=30,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return None
     try:
         return float(r.stdout.strip())
-    except ValueError:
+    except (ValueError, AttributeError):
         return None
 
 
@@ -310,7 +313,21 @@ def convert_file(src: Path, slots: SlotPool, overall: tqdm) -> tuple[bool, str]:
             reader = threading.Thread(target=lambda: tail.extend(l.strip() for l in proc.stderr if l.strip()),
                                       daemon=True)
             reader.start()
+            state = {"last": time.monotonic()}
+
+            def watchdog():
+                while proc.poll() is None:
+                    if time.monotonic() - state["last"] > 120:
+                        try:
+                            proc.kill()
+                        except OSError:
+                            pass
+                        return
+                    time.sleep(1)
+
+            threading.Thread(target=watchdog, daemon=True).start()
             for line in proc.stdout:
+                state["last"] = time.monotonic()
                 key, _, val = line.strip().partition("=")
                 if key in ("out_time_us", "out_time_ms") and val.isdigit() and duration:
                     slots.update(slot, short, int(val) / 1_000_000, duration)   # both are microseconds
