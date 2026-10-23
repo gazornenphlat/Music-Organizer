@@ -742,6 +742,13 @@ def load_settings() -> dict:
     try:
         return json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
     except Exception:
+        if SETTINGS_FILE.exists():
+            try:
+                import time as _t
+                SETTINGS_FILE.replace(SETTINGS_FILE.with_name(
+                    SETTINGS_FILE.stem + f".corrupt-{_t.strftime('%Y%m%d%H%M%S')}" + SETTINGS_FILE.suffix))
+            except OSError:
+                pass
         return {}
 
 
@@ -749,6 +756,11 @@ def save_settings(data: dict) -> None:
     data = dict(data)
     if not data.get("plex_remember_token"):
         data.pop("plex_token", None)
+    if SETTINGS_FILE.exists():
+        try:
+            shutil.copy2(SETTINGS_FILE, SETTINGS_FILE.with_name(SETTINGS_FILE.name + ".bak"))
+        except OSError:
+            pass
     tmp = SETTINGS_FILE.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
     tmp.replace(SETTINGS_FILE)

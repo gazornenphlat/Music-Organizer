@@ -108,89 +108,99 @@ class PipelineBusy(RuntimeError):
 class PipelineLock:
     """One pipeline at a time, across the CLI, the desktop app and the web app.
 
-    Uses a process-wide thread lock plus an OS file lock, so two front ends
-    (or two copies of the CLI) cannot patch music_pipeline's globals and
-    redirect stdout underneath each other.
+    Uses an in-process thread lock plus an atomically-created lock file, so the
+    same mechanism works on Windows, macOS and Linux (and on network shares,
+    where byte-range locking is unreliable). A stale lock left by a crashed
+    process is detected via its recorded PID and cleared automatically.
     """
 
     _local = threading.Lock()
 
     def __init__(self, path: Path | None = None):
         self.path = Path(path) if path else Path(__file__).with_name("music_pipeline.lock")
-        self._fd: int | None = None
         self._held = False
+        self._pid = os.getpid()
 
-    def _holder(self) -> str:
+    def _pid_alive(self, pid: int) -> bool:
+        if pid <= 0:
+            return False
         try:
-            pid = self.path.read_text(encoding="utf-8").strip()
+            if sys.platform == "win32":
+                import ctypes
+                PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+                handle = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+                if not handle:
+                    return False
+                ctypes.windll.kernel32.CloseHandle(handle)
+                return True
+            else:
+                os.kill(pid, 0)
+                return True
+        except (OSError, ValueError):
+            return False
+
+    def _clear_stale(self) -> bool:
+        try:
+            text = self.path.read_text(encoding="utf-8").strip()
         except OSError:
-            return ""
-        return f" (PID {pid})" if pid.isdigit() else ""
-
-    @staticmethod
-    def _lock_fd(fd: int) -> None:
-        if sys.platform == "win32":
-            import msvcrt
-            os.lseek(fd, 0, os.SEEK_SET)
-            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-        else:
-            import fcntl
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-
-    @staticmethod
-    def _unlock_fd(fd: int) -> None:
-        if sys.platform == "win32":
-            import msvcrt
-            os.lseek(fd, 0, os.SEEK_SET)
-            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
-        else:
-            import fcntl
-            fcntl.flock(fd, fcntl.LOCK_UN)
+            return False
+        if not text.isdigit():
+            return False
+        if self._pid_alive(int(text)):
+            return False
+        try:
+            self.path.unlink()
+        except OSError:
+            return False
+        return True
 
     def acquire(self) -> "PipelineLock":
         if not self._local.acquire(blocking=False):
             raise PipelineBusy("Another pipeline is already running in this process.")
+        if self.path.exists() and self._clear_stale():
+            pass
         try:
-            fd = os.open(self.path, os.O_RDWR | os.O_CREAT, 0o666)
+            fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
+        except FileExistsError:
+            holder = ""
+            try:
+                holder = self.path.read_text(encoding="utf-8").strip()
+            except OSError:
+                holder = ""
+            self._local.release()
+            suffix = f" (PID {holder})" if holder.isdigit() else ""
+            raise PipelineBusy(
+                f"A pipeline is already running{suffix}. "
+                "Wait for it to finish, then try again."
+            )
         except OSError as e:
             self._local.release()
             raise PipelineBusy(f"Could not create the pipeline lock file {self.path}: {e}") from e
 
         try:
-            if os.fstat(fd).st_size == 0:
-                os.write(fd, b"\0")        # msvcrt.locking needs a byte to lock
-            os.lseek(fd, 0, os.SEEK_SET)
-            self._lock_fd(fd)
-        except OSError as e:
-            os.close(fd)
-            self._local.release()
-            raise PipelineBusy(
-                f"A pipeline is already running{self._holder()}. "
-                "Wait for it to finish, then try again."
-            ) from e
-
-        self._fd, self._held = fd, True
-        try:                                # record who holds it, for the next caller's message
-            os.lseek(fd, 0, os.SEEK_SET)
-            os.ftruncate(fd, 0)
-            os.write(fd, f"{os.getpid()}\n".encode())
+            os.write(fd, f"{self._pid}\n".encode())
         except OSError:
             pass
+        finally:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        self._held = True
         return self
 
     def release(self) -> None:
         if not self._held:
             return
         try:
-            self._unlock_fd(self._fd)
-        except OSError:
-            pass
+            if self.path.exists():
+                try:
+                    if self.path.read_text(encoding="utf-8").strip() == str(self._pid):
+                        self.path.unlink()
+                except OSError:
+                    pass
         finally:
-            try:
-                os.close(self._fd)
-            except OSError:
-                pass
-            self._fd, self._held = None, False
+            self._held = False
             self._local.release()
 
     def __enter__(self) -> "PipelineLock":
@@ -642,10 +652,21 @@ def _load_json(path: Path) -> dict:
     try:
         return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     except Exception:
+        if path.exists():
+            try:
+                import time as _t
+                path.replace(path.with_name(path.stem + f".corrupt-{_t.strftime('%Y%m%d%H%M%S')}" + path.suffix))
+            except OSError:
+                pass
         return {}
 
 
 def _save_json(path: Path, data) -> None:
+    if path.exists():
+        try:
+            shutil.copy2(path, path.with_name(path.name + ".bak"))
+        except OSError:
+            pass
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     tmp.replace(path)                    # atomic: a crash can't corrupt the file

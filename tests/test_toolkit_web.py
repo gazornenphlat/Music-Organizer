@@ -67,3 +67,26 @@ def test_pipeline_preflight_rejects_missing_folder(tmp_path):
 
     assert response.status_code == 200
     assert response.get_json()["errors"]
+
+
+def test_settings_round_trip_filters_unknown_keys(tmp_path, monkeypatch):
+    client = toolkit_web.app.test_client()
+    resp = client.post("/api/settings", json={"history_on": False, "evil_key": "x", "mb_contact": "me@example.com"})
+    assert resp.status_code == 200
+    data = resp.get_json()["settings"]
+    assert data["history_on"] is False
+    assert data["mb_contact"] == "me@example.com"
+    assert "evil_key" not in data
+
+
+def test_fs_lists_directories(tmp_path):
+    (tmp_path / "alpha").mkdir()
+    (tmp_path / "beta").mkdir()
+    (tmp_path / "file.txt").write_text("x")
+    client = toolkit_web.app.test_client()
+    resp = client.get("/api/fs", query_string={"path": str(tmp_path)})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    names = [d["name"] for d in data["dirs"]]
+    assert "alpha" in names and "beta" in names
+    assert "file.txt" not in names

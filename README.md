@@ -1,5 +1,7 @@
 # Music Organizer
 
+[![tests](https://github.com/gazornenphlat/Music-Organizer/actions/workflows/tests.yml/badge.svg)](https://github.com/gazornenphlat/Music-Organizer/actions/workflows/tests.yml)
+
 A local toolkit for cleaning up a music library:
 
 - Convert FLAC albums to M4A (AAC), verify the output, then remove the originals.
@@ -137,7 +139,7 @@ A whole missing disc is also caught: if MusicBrainz only finds releases whose di
 
 ## Screenshots
 
-Web app (Ember Pill Mobile theme). Desktop app shares the same engine and settings.
+Web app (Ember Pill Mobile theme):
 
 | Pipeline | Duplicates |
 | --- | --- |
@@ -151,10 +153,19 @@ Web app (Ember Pill Mobile theme). Desktop app shares the same engine and settin
 | --- | --- |
 | ![More](docs/screenshots/more.png) | ![Settings](docs/screenshots/settings.png) |
 
+Desktop app (Tkinter, same engine and settings):
+
+| Pipeline | Duplicates |
+| --- | --- |
+| ![Desktop pipeline](docs/screenshots/desktop-pipeline.png) | ![Desktop duplicates](docs/screenshots/desktop-dupes.png) |
+
+| Tag health | Review |
+| --- | --- |
+| ![Desktop tag health](docs/screenshots/desktop-tag-health.png) | ![Desktop review](docs/screenshots/desktop-review.png) |
+
 Mobile (390 px):
 
 ![Pipeline (mobile)](docs/screenshots/pipeline-mobile.png)
-
 ## Tests
 
 ```powershell
