@@ -135,6 +135,26 @@ If the tags do not include disc numbers, the folders are processed separately as
 
 A whole missing disc is also caught: if MusicBrainz only finds releases whose discs cover every disc the folder has *plus* more, the album is flagged "suspected missing disc" and sent to Incomplete/Review instead of being marked complete by its own tags (each disc present is contiguous, so tag-only checking can't see it). This only fires for folders that already hold at least two discs, and an empty/Data medium in a release doesn't count as a missing disc.
 
+## Screenshots
+
+Web app (Ember Pill Mobile theme). Desktop app shares the same engine and settings.
+
+| Pipeline | Duplicates |
+| --- | --- |
+| ![Pipeline](docs/screenshots/pipeline.png) | ![Duplicates](docs/screenshots/dupes.png) |
+
+| Review | Tag health |
+| --- | --- |
+| ![Review](docs/screenshots/review.png) | ![Tag health](docs/screenshots/health.png) |
+
+| More tools | Settings |
+| --- | --- |
+| ![More](docs/screenshots/more.png) | ![Settings](docs/screenshots/settings.png) |
+
+Mobile (390 px):
+
+![Pipeline (mobile)](docs/screenshots/pipeline-mobile.png)
+
 ## Tests
 
 ```powershell
