@@ -112,7 +112,7 @@ function pickFolder(start, onPick) {
       $("#fs-up", el).disabled = parent === null || parent === undefined;
       $("#fs-use", el).disabled = !cur;
       $("#fs-list", el).innerHTML = d.dirs.length ? d.dirs.map((x) => `
-        <button class="tickable" style="background:none;border:none;border-bottom:1px solid rgba(46,54,80,.4);width:100%;text-align:left" data-path="${esc(x.path)}">
+        <button class="tickable" style="background:none;border:none;border-bottom:1px solid var(--border);width:100%;text-align:left" data-path="${esc(x.path)}">
           <div class="circle sm c-primary">${ic("folder-bold")}</div>
           <div class="row-text"><div class="primary-line">${esc(x.name)}</div></div>
           ${ic("alt-arrow-right-linear", 'style="color:var(--muted)"')}
@@ -186,6 +186,17 @@ const folderField = (key, label, placeholder = "Choose a folder") => `
       <button class="icon-btn" data-browse="${key}" title="Browse">${ic("folder-open-bold")}</button>
     </div>
   </div>`;
+
+// A file path is typed in: the folder browser below can only pick folders.
+const fileField = (key, label) => `
+  <div class="field">
+    <label>${esc(label)}</label>
+    <input class="input" data-setting="${key}" value="${esc(S.settings[key] || "")}" placeholder="Type or paste a file path">
+  </div>`;
+
+const isBeetsPath = (key) => key.startsWith("path_beets") || key === "path_pipeline_log";
+
+const pathField = (p) => (p.kind === "file" ? fileField(p.key, p.label) : folderField(p.key, p.label));
 
 const chip = (key, label, icon, disabled = false, title = "") =>
   `<button class="chip ${S.settings[key] ? "active" : ""}" data-chip="${key}" ${disabled ? "disabled" : ""} title="${esc(title)}">${icon ? ic(icon) : ""}${esc(label)}</button>`;
@@ -950,8 +961,13 @@ function mountSettings() {
   $("#view-settings").innerHTML = `
     <div class="card stack">
       <div class="section-head" style="margin:0"><h3 class="headline-sm">Pipeline output folders</h3><button class="btn-text" id="set-reset">Reset to defaults</button></div>
-      ${S.pathSettings.map((p) => folderField(p.key, p.label)).join("")}
+      ${S.pathSettings.filter((p) => !isBeetsPath(p.key)).map(pathField).join("")}
       <p class="caption" style="margin:0">The pipeline won't run on a source folder inside any of these.</p>
+    </div>
+    <div class="card stack">
+      <h3 class="headline-sm">Beets and logs</h3>
+      ${S.pathSettings.filter((p) => isBeetsPath(p.key)).map(pathField).join("")}
+      <p class="caption" style="margin:0">beets gets these through a generated config file. Leave a field empty to keep its default.</p>
     </div>
     <div class="grid-2">
       <div class="card stack">
@@ -980,7 +996,7 @@ function mountSettings() {
     </div>`;
   $("#set-reset").onclick = () => {
     for (const p of S.pathSettings) { setSetting(p.key, S.defaults[p.key]); $$(`[data-setting="${p.key}"]`).forEach((i) => (i.value = S.defaults[p.key])); }
-    toast("Output folders reset.", "ok");
+    toast("Paths reset to defaults.", "ok");
   };
 }
 

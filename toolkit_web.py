@@ -772,7 +772,7 @@ def settings_get():
     s["plex_token_set"] = bool(s.get("plex_token"))
     s.pop("plex_token", None)            # never sent back to the browser
     return jsonify(settings=s, capabilities=capabilities(), path_settings=[
-        {"key": key, "label": label} for _, label, key in core.PATH_SETTINGS],
+        {"key": key, "label": label, "kind": kind} for _, label, key, kind in core.ALL_PATH_SETTINGS],
         defaults=core.PIPELINE_DEFAULT_PATHS)
 
 

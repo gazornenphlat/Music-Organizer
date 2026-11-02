@@ -45,6 +45,15 @@ PATH_SETTINGS = [
     ("DELETE_DIR", "Albums with gaps (to delete)", "path_delete"),
     ("CUE_DEST", "Single-FLAC / cue folders", "path_cue"),
 ]
+# beets and pipeline-log locations: (attr on music_pipeline, label, settings key, kind).
+BEETS_PATH_SETTINGS = [
+    ("BEETS_DIR", "Beets directory", "path_beets_dir", "dir"),
+    ("BEETS_LIBRARY", "Beets library database", "path_beets_library", "file"),
+    ("BEETS_IMPORT_LOG", "Beets import log (skipped albums)", "path_beets_import_log", "file"),
+    ("BEET_IMPORT_LOG", "Pipeline beets output log", "path_pipeline_log", "file"),
+]
+# Every configurable location, with its kind ("dir" or "file").
+ALL_PATH_SETTINGS = [(a, l, k, "dir") for a, l, k in PATH_SETTINGS] + BEETS_PATH_SETTINGS
 
 # Keep references to the unpatched pipeline functions so repeated runs don't stack wrappers.
 _MP_PROCESS_FOLDER = mp.process_folder
@@ -52,7 +61,7 @@ _MP_CONVERT_FILE = mp.convert_file
 _MP_ACT = mp.act
 _MP_CONVERT_ALL = mp.convert_all
 # music_pipeline.py's own output folders, captured before any settings override them
-PIPELINE_DEFAULT_PATHS = {key: str(getattr(mp, attr)) for attr, _, key in PATH_SETTINGS}
+PIPELINE_DEFAULT_PATHS = {key: str(getattr(mp, attr)) for attr, _, key, _kind in ALL_PATH_SETTINGS}
 _MP_ASK_CHOICE = mp.ask_choice
 
 
@@ -786,8 +795,8 @@ def default_settings() -> dict:
 
 
 def apply_paths_from(values: dict) -> None:
-    """Push output folders (by settings key) into music_pipeline."""
-    for attr, _, key in PATH_SETTINGS:
+    """Push configured folders and files (by settings key) into music_pipeline."""
+    for attr, _, key, _kind in ALL_PATH_SETTINGS:
         v = str(values.get(key) or "").strip()
         if v:
             setattr(mp, attr, Path(v))
