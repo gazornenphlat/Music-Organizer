@@ -37,13 +37,18 @@ No git repo. Working dir: `C:\Users\Bobu\Downloads\Music Organizer`.
 - Review re-check/move and desktop Plex scan were consolidated into `toolkit_core` helpers.
 
 ## Web design
-Current theme: "Ember Pill Mobile" (light). Files: `web/style.css`, `web/index.html`.
-- Palette: bg #FFFFFF, surface #FFFFFF, surface-alt #F2F2F7, on-surface #000000, muted #6C6C70, border #E5E5EA, primary #F37F46, success #34C759, error #FF3B30, warning #FF9500, accent-blue #007AFF, accent-indigo #5856D6, accent-yellow #F5C842.
-- Font: Nunito Sans (Google Fonts). Icons: Solar bold (bundled in `web/icons.js`).
-- Shape language: pills for actions/nav, 28-32px cards, 14px chips, floating glass tab capsule.
+Current theme: "Midnight Categorical Dashboard" (dark, adopted 2026-11-02, replacing "Ember Pill Mobile"). Files: `web/style.css`, `web/index.html`.
+- Palette: see CLAUDE.md "UI / design". Base `#0F0F11`; coral primary, periwinkle secondary, butter accent, mint success; one hue per screen via `--cat`.
+- Fonts: bundled Space Grotesk 700, Plus Jakarta Sans 500/700, JetBrains Mono 500 in `web/fonts/` (no Google Fonts link, per the no-CDN rule). Icons: Solar bold (bundled in `web/icons.js`).
+- Shape language: 24 px cards, pill buttons/chips, 12 px icon tiles, flat hairlines, floating capsule tab bar.
 
 ## Desktop theme
-`music_toolkit.py` `T` dict uses the same Ember palette. Fonts: bundled Manrope + Space Grotesk (Nunito not bundled → fallback).
+`music_toolkit.py` `T` dict uses the same Midnight palette. Fonts: bundled Plus Jakarta Sans, Space Grotesk and JetBrains Mono in `fonts/` (loaded privately on Windows).
+
+## Beets config and paths
+- All library locations are configurable in Settings: output folders, beets directory, beets library database, beets import log, and the pipeline beets log. Defaults derive from `LIBRARY_ROOT` (`M:/`) in `music_pipeline.py`.
+- `config.yaml` is a template with `__BEETS_DIR__`, `__BEETS_LIBRARY__` and `__BEETS_IMPORT_LOG__` tokens. The pipeline renders it to `beets_runtime_config.yaml` (git-ignored) and runs `beet -c` with it.
+- Before this change the pipeline ran `beet` without `-c`, so it used the user's own beets config and ignored `config.yaml`.
 
 ## Testing
 - `pytest.ini`: `testpaths = tests`. `tests/conftest.py` stubs `musicbrainzngs`, `tqdm`, `mutagen` if missing.

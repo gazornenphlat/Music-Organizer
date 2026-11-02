@@ -8,6 +8,7 @@ mb_manual_matches.json
 mb_unmatched.json
 # Move/delete history and beets output
 history/
+beets_runtime_config.yaml   # generated from config.yaml + Settings paths
 beet_import_log.txt
 *.log
 # Reports the Duplicates / Tag health / Plex tabs can export

@@ -1,0 +1,125 @@
+# beets config -- TEMPLATE for music_pipeline.py.
+#
+# The pipeline fills the __BEETS_*__ tokens from Settings (beets directory, library database,
+# import log) and runs beets with the result (beets_runtime_config.yaml, via `beet -c`).
+# Don't put real paths here; change them in the Settings tab.
+#
+# Extra installs for the plugins below:
+#   pip install pyacoustid requests      (chroma: audio fingerprinting)  + fpcalc on PATH
+#   pip install python3-discogs-client   (discogs)
+#   pip install beets[lastgenre,fetchart,embedart]
+#
+# Re-try everything beets skipped, interactively (use the import log path from Settings):
+#   beet -c beets_runtime_config.yaml import --from-logfile <import log>
+
+directory: "__BEETS_DIR__"
+library: "__BEETS_LIBRARY__"
+
+import:
+  quiet: yes                # no prompts (the pipeline also passes -q)
+  quiet_fallback: skip      # no strong match -> skip; it's logged below and the pipeline handles it
+  log: "__BEETS_IMPORT_LOG__"   # every skipped album, for --from-logfile later
+  move: yes
+  write: yes                # write matched tags (including the MusicBrainz release ID) into the files
+  autotag: yes
+  timid: no
+  resume: yes               # was "ask": a prompt can't be answered when the pipeline runs beets
+  incremental: no           # no = look at every folder each run (yes would skip folders seen before)
+  duplicate_action: skip    # album already in the library -> leave the new copy for the pipeline
+  threaded: no
+
+match:
+  # Distance: 0.0 = perfect, 1.0 = nothing alike.
+  strong_rec_thresh: 0.15   # auto-apply at <= 0.15 (default 0.04). 0.25 was loose enough to write
+                            # wrong-edition or wrong-album tags into files in quiet mode.
+  medium_rec_thresh: 0.25   # used by interactive imports (--from-logfile) to suggest candidates
+  rec_gap_thresh: 0.25
+
+  # A partial album can still be matched and tagged correctly; the pipeline then decides
+  # complete vs incomplete. (Before, "ignored: missing_tracks" threw out every candidate
+  # with a missing track, and "max_rec: low" demoted the rest -- both forced skips.)
+  max_rec:
+    missing_tracks: strong
+    unmatched_tracks: strong
+
+  # Pick the right pressing when several releases fit equally well
+  preferred:
+    countries: ['US', 'GB|UK']
+    media: ['Digital Media|File', 'CD']
+    original_year: yes
+
+  # Only values that differ from beets' defaults
+  distance_weights:
+    missing_tracks: 0.4     # default 0.9
+    unmatched_tracks: 0.4   # default 0.6
+    year: 0.5               # default 1.0
+    label: 0.3              # default 0.5
+    country: 0.2            # default 0.5
+
+# === Plugins ===
+# musicbrainz + discogs: two metadata sources; chroma: identify by sound when tags are poor;
+# fromfilename: take track numbers/titles from file names when tags are empty
+plugins: musicbrainz discogs chroma fromfilename fetchart embedart lastgenre duplicates fuzzy inline
+
+musicbrainz:
+  https: yes
+  search_limit: 15          # was 5: the right edition is often not in the top 5
+  extra_tags: [year, catalognum, country, media, label]   # search with these too -> right edition more often
+  genres: no
+  external_ids:
+    discogs: no
+    bandcamp: no
+    spotify: no
+    deezer: no
+    beatport: no
+    tidal: no
+  data_source_mismatch_penalty: 0.0
+
+discogs:
+  user_token: ""            # <-- REQUIRED: discogs.com > Settings > Developers > Generate token
+  data_source_mismatch_penalty: 0.6   # prefer MusicBrainz when both match equally
+  search_limit: 10
+  append_style_genre: yes
+  strip_disambiguation: yes
+  index_tracks: no
+
+chroma:
+  auto: yes                 # fingerprint during import (slower: ~1 lookup per track)
+
+fetchart:
+  auto: yes
+
+embedart:
+  auto: yes
+
+duplicates:                 # only runs when you type `beet duplicates`, never during import
+  keys: [albumartist, album, title]
+  tiebreak:
+    items: [bitrate]        # keep the highest bitrate copy
+  # remove: yes             # uncomment to drop the extras from the library when you run it
+
+# === Paths ===
+item_fields:
+  firstletter: |
+    import re
+    artist = albumartist_sort or albumartist or artist or "_"
+    artist = re.sub(r"^(the|a|an)\s+", "", str(artist), flags=re.IGNORECASE)
+    return artist[0].upper() if artist else "_"
+  sortartist: |
+    return albumartist_sort or albumartist or artist or "Unknown Artist"
+  disc_prefix: |
+    return f"{disc}-" if (disctotal or 1) > 1 else ""
+
+paths:
+  # "1-01 Title" on multi-disc albums: plain "$track" made disc 2 track 1 collide with
+  # disc 1 track 1, which beets "fixes" by adding .1 to the file name
+  default: $firstletter/$sortartist/$sortartist-$album%aunique{}/$disc_prefix$track-$title
+  comp: Compilations/$album%aunique{}/$disc_prefix$track-$artist-$title
+  singleton: $firstletter/$sortartist/Non-Album/$artist-$title
+
+clutter:
+  - Thumbs.db
+  - .DS_Store
+  - .directory
+  - desktop.ini
+  - .*

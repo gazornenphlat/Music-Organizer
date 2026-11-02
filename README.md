@@ -139,7 +139,7 @@ A whole missing disc is also caught: if MusicBrainz only finds releases whose di
 
 ## Screenshots
 
-Web app (Ember Pill Mobile theme):
+Web app (screenshots predate the Midnight Categorical restyle):
 
 | Pipeline | Duplicates |
 | --- | --- |

@@ -45,11 +45,15 @@ Dependencies: `tqdm mutagen musicbrainzngs flask`; optional `send2trash plexapi 
 - Log every move and delete via `History.write(tab, action, detail)`.
 
 ## UI / design
-- Follow the "Ember Pill Mobile" design (light theme):
-  - **Colours:** bg #FFFFFF, surface #FFFFFF, surface-alt #F2F2F7, on-surface #000000, muted #6C6C70, border #E5E5EA, primary #F37F46, success #34C759, error #FF3B30, warning #FF9500, accent-blue #007AFF, accent-indigo #5856D6, accent-yellow #F5C842.
-  - **Typefaces:** Nunito Sans (web) / Manrope + Space Grotesk (desktop fallback). No third typeface.
-  - **Shape language:** pills for actions/nav, 28-32px cards, 14px chips, floating glass tab capsule.
-  - **Colours for status:** semantic colours appear only as text or tinted badges, never as solid fills.
+- Follow the "Midnight Categorical Dashboard" design (dark; replaced "Ember Pill Mobile" on 2026-11-02):
+  - **Base colours:** `#0F0F11` background, `#1A1A1C` surface (cards), `#27272A` surface-alt (inputs, tracks, icon tiles), `#3F3F46` hairline border, `#FAFAFA` text, `#A1A1AA` muted text.
+  - **Category colours:** coral `#F7A5A5` (primary), periwinkle `#8E99F3` (secondary), butter yellow `#FCE570` (accent), mint `#4ADE80` (success), violet `#C084FC`, coral-red `#FF8577`; error `#EF4444`. Text on a solid fill is `#1A1A1A`.
+  - **One hue per screen** (web: `--cat` set per `#view-*`): Pipeline coral, Duplicates periwinkle, Review yellow, Tag health mint, Plex violet.
+  - **Tinted recipe:** 10% fill + 20–30% border + full-strength text or icon. Solid fills only for the primary button (coral), the FAB (coral), and active chips/segments (periwinkle).
+  - **Flat:** hairline borders, no shadows. The only shadow is the coral glow on the primary button and the FAB.
+  - **Typefaces:** Space Grotesk 700 for headings and numbers; Plus Jakarta Sans 500 for body and 700 for labels; JetBrains Mono for logs and small data figures. No 600 weight. Three typefaces only.
+  - **Labels** (buttons, chips, tabs, field labels, small headings) are ALL CAPS with wide letter-spacing.
+  - **Shapes:** 24 px card radius, 16 px inputs, 12 px square icon buttons and icon tiles, pill-shaped buttons/chips/progress bars.
 - **Web:**
   - Use the CSS tokens and classes in `style.css`: `card`, `card-elevated`, `btn primary`, `chip`, `segmented`, `badge t-*`, `circle c-*`, `list-row`, `divided`, `progress`.
   - Icons are `ic("name-bold")` / `<iconify-icon icon="solar:...">` and render from local `web/icons.js`, so the app works offline. **After using a new icon, regenerate `icons.js`** from `@iconify-json/solar` (npm). Missing icons render blank.

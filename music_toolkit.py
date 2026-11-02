@@ -47,22 +47,22 @@ from toolkit_core import (_MP_ACT, _MP_CONVERT_FILE, _MP_PROCESS_FOLDER,  # noqa
 
 
 # =============================================================================
-# THEME: "Midnight Indigo Glow" (same tokens as web/style.css)
+# THEME: "Midnight Categorical Dashboard" (same tokens as web/style.css)
 # =============================================================================
 
-T = {
-    "bg": "#FFFFFF", "surface": "#FFFFFF", "surface_alt": "#F2F2F7", "surface_accent": "#F2F2F7",
-    "on_surface": "#000000", "muted": "#6C6C70", "border": "#E5E5EA", "primary": "#F37F46",
-    "primary_pressed": "#E06B35", "on_primary": "#FFFFFF", "success": "#34C759", "error": "#FF3B30",
-    "warning": "#FF9500", "secondary": "#007AFF", "accent": "#F5C842", "violet": "#5856D6",
-    "select": "#F2F2F7",
+T = {   # Midnight Categorical Dashboard (same values as web/style.css)
+    "bg": "#0F0F11", "surface": "#1A1A1C", "surface_alt": "#27272A", "surface_accent": "#3F3F46",
+    "on_surface": "#FAFAFA", "muted": "#A1A1AA", "border": "#3F3F46", "primary": "#F7A5A5",
+    "primary_pressed": "#E88F8F", "on_primary": "#1A1A1A", "success": "#4ADE80", "error": "#EF4444",
+    "warning": "#FCE570", "secondary": "#8E99F3", "accent": "#FCE570", "violet": "#C084FC",
+    "select": "#27272A", "disabled": "#52525B",
 }
 FONTS = {}   # filled by apply_theme() once Tk exists
 FONT_DIR = Path(__file__).with_name("fonts")
 
 
 def _load_private_fonts():
-    """Make the bundled Manrope / Space Grotesk usable by Tk without installing them (Windows)."""
+    """Make the bundled Plus Jakarta Sans / Space Grotesk / JetBrains Mono usable by Tk without installing them (Windows)."""
     if sys.platform != "win32" or not FONT_DIR.is_dir():
         return
     try:
@@ -77,13 +77,15 @@ def _load_private_fonts():
 def apply_theme(root):
     import tkinter.font as tkfont
     fams = set(tkfont.families(root))
-    body = "Manrope Medium" if "Manrope Medium" in fams else ("Segoe UI" if sys.platform == "win32" else "TkDefaultFont")
-    semi = "Manrope SemiBold" if "Manrope SemiBold" in fams else body
-    bold = "Manrope" if "Manrope" in fams else body
-    head = "Space Grotesk" if "Space Grotesk" in fams else bold
-    FONTS.update(body=(body, 10), label=(semi, 10), bold=(bold, 10, "bold"), caption=(body, 9),
-                 log=(body, 9), headline_sm=(head, 13, "bold"), headline=(head, 18, "bold"),
-                 tab=(semi, 10))
+    fallback = "Segoe UI" if sys.platform == "win32" else "TkDefaultFont"
+    body = "Plus Jakarta Sans Medium" if "Plus Jakarta Sans Medium" in fams else (
+        "Plus Jakarta Sans" if "Plus Jakarta Sans" in fams else fallback)
+    bold = "Plus Jakarta Sans" if "Plus Jakarta Sans" in fams else body      # labels: 700 weight
+    head = "Space Grotesk" if "Space Grotesk" in fams else bold                # headings and numbers: 700
+    mono = "JetBrains Mono" if "JetBrains Mono" in fams else ("Consolas" if sys.platform == "win32" else "TkFixedFont")
+    FONTS.update(body=(body, 10), label=(bold, 10, "bold"), bold=(bold, 10, "bold"), caption=(body, 9),
+                 log=(mono, 9), headline_sm=(head, 13, "bold"), headline=(head, 18, "bold"),
+                 tab=(bold, 10, "bold"))
 
     root.configure(bg=T["bg"])
     # (no global "*Font": it would override ttk style fonts, e.g. the headline)
@@ -114,10 +116,10 @@ def apply_theme(root):
     st.configure("TButton", background=sf, foreground=on, bordercolor=bd, lightcolor=sf, darkcolor=sf,
                  padding=(14, 7), font=FONTS["label"], relief="flat", focusthickness=0)
     st.map("TButton", background=[("disabled", sf), ("pressed", T["surface_accent"]), ("active", T["surface_accent"])],
-           foreground=[("disabled", "#C7C7CC")], bordercolor=[("focus", bd)])
+           foreground=[("disabled", T["disabled"])], bordercolor=[("focus", bd)])
     st.configure("Accent.TButton", background=pr, foreground=T["on_primary"], bordercolor=pr, lightcolor=pr, darkcolor=pr)
     st.map("Accent.TButton", background=[("disabled", T["surface_alt"]), ("pressed", T["primary_pressed"]), ("active", T["primary_pressed"])],
-           foreground=[("disabled", "#C7C7CC")], bordercolor=[("disabled", T["surface_alt"])])
+           foreground=[("disabled", T["disabled"])], bordercolor=[("disabled", T["surface_alt"])])
     st.configure("Danger.TButton", foreground=T["error"])
 
     for w in ("TCheckbutton", "TRadiobutton"):
@@ -156,7 +158,7 @@ def apply_theme(root):
     st.configure("Sash", sashthickness=6, background=bg)
 
 
-ACCENT_PREFIXES = ("▶ Run", "🔍 Scan", "🔍 Re-check", "Connect", "✔ Accept", "Search")
+ACCENT_PREFIXES = ("▶ Run", "🔍 Scan", "🔍 Re-check", "Connect", "✔ Accept", "✔ Move", "Search")
 DANGER_PREFIXES = ("🗑",)
 
 
@@ -213,7 +215,7 @@ class Settings:
 def init_shared(settings):
     """Variables several tabs share. Must run after the Tk root exists."""
     settings.paths = {attr: settings.bind(key, tk.StringVar(value=str(getattr(mp, attr))))
-                      for attr, _, key in PATH_SETTINGS}
+                      for attr, _, key, _kind in ALL_PATH_SETTINGS}
     settings.use_trash = settings.bind("use_trash", tk.BooleanVar(value=send2trash is not None))
     settings.pipe_trash = settings.bind("pipe_trash", tk.BooleanVar(value=send2trash is not None))
     settings.history = History(settings.bind("history_dir", tk.StringVar(value=HISTORY_DEFAULT)),
@@ -285,6 +287,15 @@ def folder_row(parent, label, var, row):
     ttk.Entry(parent, textvariable=var).grid(row=row, column=1, sticky="ew")
     ttk.Button(parent, text="Browse…",
                command=lambda: var.set(filedialog.askdirectory() or var.get())
+               ).grid(row=row, column=2, padx=(6, 0))
+
+
+def file_row(parent, label, var, row):
+    """Like folder_row, but for a single file (beets library database, log files)."""
+    ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", padx=(0, 6))
+    ttk.Entry(parent, textvariable=var).grid(row=row, column=1, sticky="ew")
+    ttk.Button(parent, text="Browse…",
+               command=lambda: var.set(filedialog.askopenfilename() or var.get())
                ).grid(row=row, column=2, padx=(6, 0))
 
 
@@ -872,17 +883,22 @@ class ReviewTab(ttk.Frame):
         self.include_incomplete = settings.bind("review_scan_incomplete", tk.BooleanVar(value=True))
         self.q_artist, self.q_album, self.q_id = tk.StringVar(), tk.StringVar(), tk.StringVar()
 
+        # Row 1: scan actions on the left, the one primary action on the right.
         b = ttk.Frame(self)
         b.pack(fill="x")
         ttk.Button(b, text="↻ Reload", command=self.reload).pack(side="left")
-        self.recheck_btn = ttk.Button(b, text="🔍 Re-check all with the new matcher", command=self.recheck)
-        self.recheck_btn.pack(side="left", padx=4)
-        ttk.Checkbutton(b, text="also add every folder in Incomplete", variable=self.include_incomplete).pack(side="left")
+        self.recheck_btn = ttk.Button(b, text="🔍 Re-check all", command=self.recheck)
+        self.recheck_btn.pack(side="left", padx=(6, 0))
         self.stop_btn = ttk.Button(b, text="■ Stop", command=self.cancel.set, state="disabled")
-        self.stop_btn.pack(side="left", padx=4)
-        self.move_btn = ttk.Button(b, text="✔ Move all confirmed to Complete", command=self.move_confirmed)
+        self.stop_btn.pack(side="left", padx=(6, 0))
+        self.move_btn = ttk.Button(b, text="✔ Move confirmed to Complete", command=self.move_confirmed)
         self.move_btn.pack(side="right")
-        ttk.Checkbutton(b, text="Write release ID into files", variable=self.write_tags).pack(side="right", padx=8)
+
+        # Row 2: options that change what the scan and the move do.
+        o = ttk.Frame(self)
+        o.pack(fill="x", pady=(6, 0))
+        ttk.Checkbutton(o, text="Also scan every folder in Incomplete", variable=self.include_incomplete).pack(side="left")
+        ttk.Checkbutton(o, text="Write release ID into files", variable=self.write_tags).pack(side="left", padx=(16, 0))
 
         self.summary = ttk.Label(self, text="")
         self.summary.pack(fill="x", pady=(6, 2))
@@ -1264,7 +1280,7 @@ class PlexTab(ttk.Frame):
         ttk.Entry(c, textvariable=self.map_from).grid(row=2, column=1, sticky="ew", pady=(6, 0))
         ttk.Label(c, text="= local path:").grid(row=2, column=2, sticky="w", padx=(8, 0), pady=(6, 0))
         ttk.Entry(c, textvariable=self.map_to, width=28).grid(row=2, column=3, columnspan=2, sticky="ew", pady=(6, 0))
-        ttk.Label(c, text="(only if this PC sees the files under a different path, e.g. /data/movies = M:\\Movies)",
+        ttk.Label(c, text="(only if this PC sees the files under a different path, e.g. /data/movies = D:\\Movies)",
                   foreground=T["muted"]).grid(row=3, column=1, columnspan=5, sticky="w")
 
         r = ttk.LabelFrame(self, text="Auto-pick rules (applied in this order; each only acts if a keeper remains)", padding=8)
@@ -1521,8 +1537,15 @@ class SettingsTab(ttk.Frame):
             folder_row(f, label + ":", settings.paths[attr], row)
         ttk.Label(f, text="The pipeline refuses to run on a source folder inside any of these.",
                   foreground=T["muted"]).grid(row=len(PATH_SETTINGS), column=1, sticky="w", pady=(4, 0))
-        ttk.Button(f, text="Reset to music_pipeline.py defaults", command=self.reset_paths
-                   ).grid(row=len(PATH_SETTINGS) + 1, column=1, sticky="w", pady=(6, 0))
+        bf = ttk.LabelFrame(self, text="Beets and logs", padding=8)
+        bf.pack(fill="x", pady=(8, 0))
+        bf.columnconfigure(1, weight=1)
+        for row, (attr, label, key, kind) in enumerate(BEETS_PATH_SETTINGS):
+            (folder_row if kind == "dir" else file_row)(bf, label + ":", settings.paths[attr], row)
+        ttk.Label(bf, text="beets reads these through the generated beets_runtime_config.yaml.",
+                  foreground=T["muted"]).grid(row=len(BEETS_PATH_SETTINGS), column=1, sticky="w", pady=(4, 0))
+
+        ttk.Button(self, text="Reset all paths to defaults", command=self.reset_paths).pack(anchor="w", pady=(8, 0))
 
         d = ttk.LabelFrame(self, text="Deleting", padding=8)
         d.pack(fill="x", pady=8)
@@ -1557,7 +1580,7 @@ class SettingsTab(ttk.Frame):
     def reset_paths(self):
         # Defaults captured from music_pipeline.py before any settings override them
         # (see PIPELINE_DEFAULT_PATHS in toolkit_core.py) -- one source of truth.
-        for attr, _, key in PATH_SETTINGS:
+        for attr, _, key, _kind in ALL_PATH_SETTINGS:
             self.settings.paths[attr].set(PIPELINE_DEFAULT_PATHS[key])
 
     def open_today(self):

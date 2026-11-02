@@ -57,16 +57,19 @@ except ImportError as e:
 # CONFIGURATION
 # =============================================================================
 
+# Default library drive. Every default folder below derives from it; the Settings tab overrides each one.
+LIBRARY_ROOT = Path("M:/")
+
 # --- Stage 1: conversion ---
-CUE_DEST = Path(r"M:\TO SORT\AAA_CUE")
+CUE_DEST = LIBRARY_ROOT / "TO SORT" / "AAA_CUE"
 DEFAULT_WORKERS = min(os.cpu_count() or 4, 8)
 AAC_BITRATE = "256k"            # 256k AAC is transparent for nearly everyone; 320k is fine too
 DURATION_TOLERANCE_S = 1.0      # output must be within this of the source to count as good
 
 # --- Stage 2: cleanup ---
-COMPLETE_DIR = Path(r"M:\sort_script\aaa_complete")
-INCOMPLETE_DIR = Path(r"M:\sort_script\aaa_incomplete")
-DELETE_DIR = Path(r"M:\sort_script\aaa_delete")
+COMPLETE_DIR = LIBRARY_ROOT / "sort_script" / "aaa_complete"
+INCOMPLETE_DIR = LIBRARY_ROOT / "sort_script" / "aaa_incomplete"
+DELETE_DIR = LIBRARY_ROOT / "sort_script" / "aaa_delete"
 SUPPORTED_EXTENSIONS = {'.mp3', '.m4a', '.flac'}
 
 MB_APP_NAME = "LeftoverCleanupScript"
@@ -86,7 +89,14 @@ RUN_BEETS_FIRST = True
 BEET_EXECUTABLE = "beet"
 BEET_IMPORT_ARGS = ["-q", "-m"]   # quiet + move. Without -q beets waits for input forever.
 BEET_IMPORT_TIMEOUT = 1800       # stop beets only if it prints nothing for this long (seconds)
-BEET_IMPORT_LOG = Path(__file__).with_name("beet_import_log.txt")
+BEET_IMPORT_LOG = Path(__file__).with_name("beet_import_log.txt")   # pipeline-side beets output
+# beets' own settings. config.yaml is a template: its __BEETS_*__ tokens are filled from these values
+# into beets_runtime_config.yaml, which is passed to beet with -c.
+BEETS_DIR = LIBRARY_ROOT / "beets"
+BEETS_LIBRARY = Path.home() / "data" / "musiclibrary-7-2c-2026.db"
+BEETS_IMPORT_LOG = BEETS_DIR / "import.log"
+BEETS_CONFIG_TEMPLATE = Path(__file__).with_name("config.yaml")
+BEETS_RUNTIME_CONFIG = Path(__file__).with_name("beets_runtime_config.yaml")
 
 PROTECTED_DIRS = (COMPLETE_DIR, INCOMPLETE_DIR, DELETE_DIR, CUE_DEST)
 
@@ -991,6 +1001,23 @@ def _beets_totals(source: Path) -> tuple[int, int]:
     return tracks, albums
 
 
+def render_beets_config(template_text: str, values: dict) -> str:
+    """Fill the __BEETS_*__ tokens in config.yaml with real paths (forward slashes, as beets expects)."""
+    out = template_text
+    for token, value in values.items():
+        out = out.replace(f"__{token}__", Path(value).as_posix())
+    return out
+
+
+def write_beets_runtime_config(dir_: Path, library: Path, import_log: Path) -> Path:
+    """Write beets_runtime_config.yaml from the template and the configured paths. Returns its path."""
+    text = BEETS_CONFIG_TEMPLATE.read_text(encoding="utf-8")
+    rendered = render_beets_config(text, {"BEETS_DIR": dir_, "BEETS_LIBRARY": library,
+                                          "BEETS_IMPORT_LOG": import_log})
+    BEETS_RUNTIME_CONFIG.write_text(rendered, encoding="utf-8")
+    return BEETS_RUNTIME_CONFIG
+
+
 def run_beets_first_pass(source: Path) -> None:
     print(f"\n🎧 Running beets first pass on: {source}")
     if DRY_RUN:
@@ -1005,7 +1032,11 @@ def run_beets_first_pass(source: Path) -> None:
     # Unbuffered + UTF-8 so beets' per-album lines arrive as they happen, not in 8 KB chunks.
     env = dict(os.environ, PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8")
     try:
-        proc = subprocess.Popen([BEET_EXECUTABLE, "import", *BEET_IMPORT_ARGS, str(source)],
+        BEETS_DIR.mkdir(parents=True, exist_ok=True)              # beets refuses to start without its log folder
+        BEETS_IMPORT_LOG.parent.mkdir(parents=True, exist_ok=True)
+        BEETS_LIBRARY.parent.mkdir(parents=True, exist_ok=True)
+        cfg = write_beets_runtime_config(BEETS_DIR, BEETS_LIBRARY, BEETS_IMPORT_LOG)
+        proc = subprocess.Popen([BEET_EXECUTABLE, "-c", str(cfg), "import", *BEET_IMPORT_ARGS, str(source)],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 stdin=subprocess.DEVNULL,   # never hang on a prompt
                                 text=True, encoding="utf-8", errors="replace", env=env)
