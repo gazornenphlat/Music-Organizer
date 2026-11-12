@@ -24,7 +24,6 @@ import csv
 import json
 import os
 import queue
-import re
 import shutil
 import subprocess
 import sys
@@ -32,16 +31,16 @@ import threading
 import time
 import tkinter as tk
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from tkinter.scrolledtext import ScrolledText
 
-import mutagen
 import music_pipeline as mp
-from toolkit_core import *  # noqa: F401,F403  shared logic (also used by toolkit_web.py)
-from toolkit_core import (_MP_ACT, _MP_CONVERT_FILE, _MP_PROCESS_FOLDER,  # noqa: F401
-                          _discs_counts, _discs_from_entry, _tracks_label)
+import toolkit_core as core
+from toolkit_core import (ALL_PATH_SETTINGS, BEETS_PATH_SETTINGS, DEFAULT_TAGS, HISTORY_DEFAULT, MODES,
+                          PATH_SETTINGS, PIPELINE_DEFAULT_PATHS, PRIORITIES, SETTINGS_FILE, History,
+                          acoustid, album_health, find_duplicates, fmt_dur, fmt_size, remove_file,
+                          run_pipeline, send2trash, _discs_counts, _discs_from_entry, _tracks_label)
 
 
 
@@ -889,8 +888,8 @@ class ReviewTab(ttk.Frame):
         ttk.Button(b, text="↻ Reload", command=self.reload).pack(side="left")
         self.recheck_btn = ttk.Button(b, text="🔍 Re-check all", command=self.recheck)
         self.recheck_btn.pack(side="left", padx=(6, 0))
-        self.stop_btn = ttk.Button(b, text="■ Stop", command=self.cancel.set, state="disabled")
-        self.stop_btn.pack(side="left", padx=(6, 0))
+        # Stop is shown only while a scan runs (see _set_scanning).
+        self.stop_btn = ttk.Button(b, text="■ Stop", command=self.cancel.set)
         self.move_btn = ttk.Button(b, text="✔ Move confirmed to Complete", command=self.move_confirmed)
         self.move_btn.pack(side="right")
 
@@ -972,6 +971,15 @@ class ReviewTab(ttk.Frame):
         self.reload()
 
     # ---- background helper: one MusicBrainz job at a time ----
+    def _set_scanning(self, running):
+        """Show Stop beside Re-check only while a scan runs."""
+        if running:
+            self.stop_btn.configure(state="normal")
+            self.stop_btn.pack(side="left", padx=(6, 0), after=self.recheck_btn)
+        else:
+            self.stop_btn.configure(state="disabled")
+            self.stop_btn.pack_forget()
+
     def _run(self, fn, *args):
         if self.busy:
             messagebox.showinfo("Review", "Still working on the previous request.")
@@ -979,7 +987,7 @@ class ReviewTab(ttk.Frame):
         self.busy = True
         self.cancel.clear()
         self.recheck_btn.configure(state="disabled")
-        self.stop_btn.configure(state="normal")
+        self._set_scanning(True)
         contact = self.settings.vars.get("mb_contact")
         contact = contact.get().strip() if contact else mp.MB_CONTACT
         apply_paths(self.settings)
@@ -1006,7 +1014,7 @@ class ReviewTab(ttk.Frame):
     def _work_done(self, err):
         self.busy = False
         self.recheck_btn.configure(state="normal")
-        self.stop_btn.configure(state="disabled")
+        self._set_scanning(False)
         self.progress.configure(value=0)
         self._render()
         if err:
@@ -1255,11 +1263,9 @@ class PlexTab(ttk.Frame):
         self.map_to = S("plex_map_to", tk.StringVar())
         self.dry_run = tk.BooleanVar(value=True)
 
-        try:
-            import plexapi  # noqa
-            self.available = True
-        except ImportError:
-            self.available = False
+        import importlib.util
+        self.available = importlib.util.find_spec("plexapi") is not None
+        if not self.available:
             ttk.Label(self, text="The Plex tab needs plexapi:  pip install plexapi", foreground=T["error"]).pack(anchor="w")
 
         c = ttk.LabelFrame(self, text="Server", padding=8)
@@ -1537,12 +1543,26 @@ class SettingsTab(ttk.Frame):
             folder_row(f, label + ":", settings.paths[attr], row)
         ttk.Label(f, text="The pipeline refuses to run on a source folder inside any of these.",
                   foreground=T["muted"]).grid(row=len(PATH_SETTINGS), column=1, sticky="w", pady=(4, 0))
+        sv = ttk.LabelFrame(self, text="Services", padding=8)
+        sv.pack(fill="x", pady=(8, 0))
+        sv.columnconfigure(1, weight=1)
+        ttk.Label(sv, text="MusicBrainz contact (email or URL):").grid(row=0, column=0, sticky="w", padx=(0, 6))
+        contact = settings.vars.get("mb_contact") or settings.bind("mb_contact", tk.StringVar(value=mp.MB_CONTACT))
+        ttk.Entry(sv, textvariable=contact).grid(row=0, column=1, sticky="ew")
+        ttk.Label(sv, text="Required for MusicBrainz lookups. Its placeholder value is refused.",
+                  foreground=T["muted"]).grid(row=1, column=1, sticky="w", pady=(2, 8))
+        ttk.Label(sv, text="Discogs token:").grid(row=2, column=0, sticky="w", padx=(0, 6))
+        token = settings.bind("discogs_token", tk.StringVar(value=""))
+        ttk.Entry(sv, textvariable=token, show="•").grid(row=2, column=1, sticky="ew")
+        remember = settings.bind("discogs_remember_token", tk.BooleanVar(value=False))
+        ttk.Checkbutton(sv, text="Remember token on disk", variable=remember).grid(row=3, column=1, sticky="w", pady=(4, 0))
+
         bf = ttk.LabelFrame(self, text="Beets and logs", padding=8)
         bf.pack(fill="x", pady=(8, 0))
         bf.columnconfigure(1, weight=1)
         for row, (attr, label, key, kind) in enumerate(BEETS_PATH_SETTINGS):
             (folder_row if kind == "dir" else file_row)(bf, label + ":", settings.paths[attr], row)
-        ttk.Label(bf, text="beets reads these through the generated beets_runtime_config.yaml.",
+        ttk.Label(bf, text="The pipeline runs beets with config.yaml, filled with these paths and the Discogs token. Your own beets config is not used.",
                   foreground=T["muted"]).grid(row=len(BEETS_PATH_SETTINGS), column=1, sticky="w", pady=(4, 0))
 
         ttk.Button(self, text="Reset all paths to defaults", command=self.reset_paths).pack(anchor="w", pady=(8, 0))

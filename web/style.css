@@ -30,21 +30,16 @@
 
   /* semantic aliases */
   --primary: var(--coral);
-  --on-primary: var(--on-fill);
   --secondary: var(--periwinkle);
   --success: var(--mint);
   --warning: var(--butter);
-  --accent-indigo: var(--violet);
   --cat: var(--coral);         /* per-screen hue, set on #view-* below */
 
   /* shape */
   --r-tile: 12px; --r-input: 16px; --r-card: 24px; --r-pill: 9999px;
-  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-2xl: 24px; --r-3xl: 24px; --r-full: 9999px;
 
   /* the only shadow: coral glow on the primary button and FAB */
   --glow-btn: 0 8px 24px -8px rgba(247,165,165,0.45);
-  --glow-hero: none;
-  --glow-tab: none;
 
   --f-head: "Space Grotesk", system-ui, sans-serif;
   --f-body: "Plus Jakarta Sans", system-ui, sans-serif;

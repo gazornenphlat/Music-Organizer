@@ -76,7 +76,7 @@ musicbrainz:
   data_source_mismatch_penalty: 0.0
 
 discogs:
-  user_token: ""            # <-- REQUIRED: discogs.com > Settings > Developers > Generate token
+  user_token: "__DISCOGS_TOKEN__"   # filled from Settings (discogs.com > Settings > Developers > Generate token)
   data_source_mismatch_penalty: 0.6   # prefer MusicBrainz when both match equally
   search_limit: 10
   append_style_genre: yes

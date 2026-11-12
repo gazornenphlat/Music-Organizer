@@ -79,14 +79,16 @@ Current theme: "Midnight Categorical Dashboard" (dark, adopted 2026-11-02, repla
 - Restyled both UIs to Ember Pill Mobile.
 
 ## Known limitations
-- Output paths default to `M:\...`; set before first run.
-- `MB_CONTACT` placeholder in `music_pipeline.py`.
+- Default paths derive from `LIBRARY_ROOT` (`M:/`); every location is set in the Settings tab.
+- `MB_CONTACT` still has its placeholder default. Set the MusicBrainz contact in Settings; the cleanup step refuses the placeholder.
+- The Discogs token is stored in the settings file only when "Remember token on disk" is on. Otherwise it lasts for the session.
 - Flask dev server; use waitress for LAN production.
 - Web access token carried in URL.
 - Only pipeline is locked; other jobs can overlap across front ends.
 - Multi-disc grouping requires distinct disc tags (conservative fallback otherwise).
-- Desktop uses Manrope/Space Grotesk (Nunito not bundled).
-- No git repo.
+- Web and desktop bundle Plus Jakarta Sans, Space Grotesk and JetBrains Mono (`web/fonts/`, `fonts/`).
+- Icons: `tools/build_icons.py` rebuilds `web/icons.js` from the pinned Solar 1.2.13 set. Three icons keep their previous bodies (`tools/legacy_icons.json`) because that release doesn't have them.
+- Git: work on a branch and open a PR. The synced `T:\sync` folder is a plain copy, not a repo.
 
 ---
 

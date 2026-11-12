@@ -967,7 +967,22 @@ function mountSettings() {
     <div class="card stack">
       <h3 class="headline-sm">Beets and logs</h3>
       ${S.pathSettings.filter((p) => isBeetsPath(p.key)).map(pathField).join("")}
-      <p class="caption" style="margin:0">beets gets these through a generated config file. Leave a field empty to keep its default.</p>
+      <p class="caption" style="margin:0">The pipeline runs beets with config.yaml, filled with these paths and the Discogs token. Your own beets config is not used. Leave a field empty to keep its default.</p>
+    </div>
+    <div class="card stack">
+      <h3 class="headline-sm">Services</h3>
+      <div class="field">
+        <label>MusicBrainz contact (email or URL)</label>
+        <input class="input" data-setting="mb_contact" value="${esc(S.settings.mb_contact || "")}" placeholder="you@example.com">
+        <span class="caption">Required for MusicBrainz lookups. The placeholder value is refused.</span>
+      </div>
+      <div class="field">
+        <label>Discogs token</label>
+        <input class="input" type="password" data-setting="discogs_token" placeholder="${S.settings.discogs_token_set ? "Saved (leave blank to keep it)" : "Paste your Discogs token"}">
+      </div>
+      <div class="chips">
+        <button class="chip ${S.settings.discogs_remember_token ? "active" : ""}" data-chip="discogs_remember_token">Remember token on disk</button>
+      </div>
     </div>
     <div class="grid-2">
       <div class="card stack">

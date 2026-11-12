@@ -72,3 +72,29 @@ def test_web_settings_report_path_kinds():
     assert kinds["path_beets_library"] == "file"
     assert kinds["path_pipeline_log"] == "file"
     assert kinds["path_complete"] == "dir"
+
+
+def test_discogs_token_goes_into_beets_config_and_empty_stays_empty(tmp_path, monkeypatch):
+    monkeypatch.setattr(mp, "BEETS_RUNTIME_CONFIG", tmp_path / "runtime.yaml")
+    out = mp.write_beets_runtime_config(tmp_path / "b", tmp_path / "x.db", tmp_path / "b" / "log.txt",
+                                        'abc"def')
+    text = out.read_text(encoding="utf-8")
+    assert 'user_token: "abcdef"' in text          # quotes stripped so the YAML stays valid
+    out = mp.write_beets_runtime_config(tmp_path / "b", tmp_path / "x.db", tmp_path / "b" / "log.txt", "")
+    assert 'user_token: ""' in out.read_text(encoding="utf-8")
+
+
+def test_discogs_token_is_never_returned_by_web_settings(monkeypatch):
+    monkeypatch.setitem(toolkit_web.SETTINGS, "discogs_token", "secret-token")
+    client = toolkit_web.app.test_client()
+    data = client.get("/api/settings").get_json()
+    assert "discogs_token" not in data["settings"]
+    assert data["settings"]["discogs_token_set"] is True
+    assert "secret-token" not in str(data)
+
+
+def test_blank_discogs_token_keeps_saved_one(monkeypatch):
+    monkeypatch.setitem(toolkit_web.SETTINGS, "discogs_token", "kept")
+    monkeypatch.setattr(core, "save_settings", lambda data: None)   # don't touch the real settings file
+    toolkit_web.settings_update({"discogs_token": ""})
+    assert toolkit_web.SETTINGS["discogs_token"] == "kept"

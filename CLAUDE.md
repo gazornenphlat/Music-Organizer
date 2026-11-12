@@ -13,9 +13,10 @@ music_toolkit.py    Tk desktop app (imports * from toolkit_core); theme in T / F
 toolkit_web.py      Flask server: /api/* JSON endpoints, /api/events SSE, Job runner, Hub (event bus)
 web/                index.html, app.js (vanilla JS, no build step), style.css (design tokens), icons.js, fonts/
 fonts/              TTFs for Tk (loaded privately on Windows)
-config.yaml         beets config
+config.yaml         beets config template (__BEETS_*__ and __DISCOGS_TOKEN__ filled from Settings at run time)
+tools/              build_icons.py (rebuilds web/icons.js from Solar 1.2.13), icon_element.js, legacy_icons.json
+tests/              pytest suite
 ```
-`flac_to_m4a.py`, `leftover_cleanup.py`, `find_music_dupes.py`, `delete_dupes.py` and `plex_dedup.py` are old originals. Don't edit them.
 
 ## Commands
 ```
@@ -56,7 +57,7 @@ Dependencies: `tqdm mutagen musicbrainzngs flask`; optional `send2trash plexapi 
   - **Shapes:** 24 px card radius, 16 px inputs, 12 px square icon buttons and icon tiles, pill-shaped buttons/chips/progress bars.
 - **Web:**
   - Use the CSS tokens and classes in `style.css`: `card`, `card-elevated`, `btn primary`, `chip`, `segmented`, `badge t-*`, `circle c-*`, `list-row`, `divided`, `progress`.
-  - Icons are `ic("name-bold")` / `<iconify-icon icon="solar:...">` and render from local `web/icons.js`, so the app works offline. **After using a new icon, regenerate `icons.js`** from `@iconify-json/solar` (npm). Missing icons render blank.
+  - Icons are `ic("name-bold")` / `<iconify-icon icon="solar:...">` and render from local `web/icons.js`, so the app works offline. **After using a new icon, run `python tools/build_icons.py <path to node_modules/@iconify-json/solar>`** (Solar 1.2.13). Missing icons render blank.
   - No CDNs, no build step, no frameworks.
 - **Tk:** use `T[...]` colours and `FONTS[...]`. Buttons are styled by text prefix in `style_buttons()` (`Accent.TButton` / `Danger.TButton`). Don't set a global `*Font` option; it overrides ttk style fonts.
 
@@ -68,11 +69,11 @@ Dependencies: `tqdm mutagen musicbrainzngs flask`; optional `send2trash plexapi 
 - When killing a test server by matching the command line, don't use a pattern that also matches your own shell command (it kills itself).
 
 ## Testing
-- Test suite: `python -m pytest -q` (50 tests). Test with synthetic audio from ffmpeg (`-f lavfi -i sine=...` with `-metadata` tags) in a scratch folder, with a settings file pointing the output folders there.
+- Test suite: `python -m pytest -q` (62 tests). Test with synthetic audio from ffmpeg (`-f lavfi -i sine=...` with `-metadata` tags) in a scratch folder, with a settings file pointing the output folders there.
 - **Web:** run the server and drive `/api/*` with curl. Listen on `/api/events` to check events. Check layout with Playwright screenshots at 1280 px and 390 px wide.
 - **Tk:** run under Xvfb (Python with Tk) and screenshot each notebook tab.
 - **Not yet tested:** Windows, a real Plex server, live MusicBrainz and Discogs. Say so when relevant.
 
 ## Working style for this user
 - They tend to ask for whole features at once ("add all suggestions", "rewrite as necessary"). Implement everything asked, test it, then list concrete improvement suggestions at the end.
-- Deliver updated files, keep the project copies in sync (`claude/...`), and update `memory.md` when decisions change.
+- Work on a branch and open a PR. The GitHub repo is the source of truth; the synced `T:\sync` folder is a plain copy. Update `memory.md` when decisions change.

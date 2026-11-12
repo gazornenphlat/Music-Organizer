@@ -52,6 +52,8 @@ def settings_update(values: dict) -> None:
     allowed = core.default_settings().keys() | {"last_tab"}
     with _settings_lock:
         for k, v in values.items():
+            if k == "discogs_token" and not str(v or "").strip():
+                continue                      # blank keeps the saved token; the browser never sees it
             if k in allowed:
                 SETTINGS[k] = v
         core.save_settings(SETTINGS)
@@ -66,12 +68,9 @@ HISTORY.snapshot()
 
 
 def capabilities() -> dict:
+    import importlib.util
     import shutil
-    try:
-        import plexapi  # noqa: F401
-        plex = True
-    except ImportError:
-        plex = False
+    plex = importlib.util.find_spec("plexapi") is not None
     return {"send2trash": core.send2trash is not None, "fingerprint": core.acoustid is not None,
             "plexapi": plex, "ffmpeg": shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None,
             "beets": shutil.which(mp.BEET_EXECUTABLE) is not None, "platform": sys.platform}
@@ -771,6 +770,8 @@ def settings_get():
     s = dict(SETTINGS)
     s["plex_token_set"] = bool(s.get("plex_token"))
     s.pop("plex_token", None)            # never sent back to the browser
+    s["discogs_token_set"] = bool(s.get("discogs_token"))
+    s.pop("discogs_token", None)
     return jsonify(settings=s, capabilities=capabilities(), path_settings=[
         {"key": key, "label": label, "kind": kind} for _, label, key, kind in core.ALL_PATH_SETTINGS],
         defaults=core.PIPELINE_DEFAULT_PATHS)

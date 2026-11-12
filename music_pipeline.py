@@ -74,7 +74,8 @@ SUPPORTED_EXTENSIONS = {'.mp3', '.m4a', '.flac'}
 
 MB_APP_NAME = "LeftoverCleanupScript"
 MB_APP_VERSION = "3.0"
-MB_CONTACT = "your-email-or-project-url-here"   # <-- fill in
+MB_CONTACT = "your-email-or-project-url-here"   # <-- fill in (or set it in Settings)
+DISCOGS_TOKEN = os.environ.get("DISCOGS_TOKEN", "")   # set in Settings; goes into the beets config
 MB_MIN_SCORE = 90                 # accept a search result on score alone
 MB_MIN_SCORE_COUNTS_MATCH = 70    # accept a lower score when disc + track counts fit the folder exactly
 MB_SEARCH_LIMIT = 15              # releases to look at per search (was: only the first)
@@ -1002,18 +1003,21 @@ def _beets_totals(source: Path) -> tuple[int, int]:
 
 
 def render_beets_config(template_text: str, values: dict) -> str:
-    """Fill the __BEETS_*__ tokens in config.yaml with real paths (forward slashes, as beets expects)."""
+    """Fill the __TOKEN__ placeholders in config.yaml. Path values get forward slashes (beets expects them);
+    plain strings, such as the discogs token, are inserted as they are."""
     out = template_text
     for token, value in values.items():
-        out = out.replace(f"__{token}__", Path(value).as_posix())
+        text = value.as_posix() if isinstance(value, Path) else str(value)
+        out = out.replace(f"__{token}__", text)
     return out
 
 
-def write_beets_runtime_config(dir_: Path, library: Path, import_log: Path) -> Path:
-    """Write beets_runtime_config.yaml from the template and the configured paths. Returns its path."""
+def write_beets_runtime_config(dir_: Path, library: Path, import_log: Path, discogs_token: str = "") -> Path:
+    """Write beets_runtime_config.yaml from the template, the configured paths and the discogs token."""
     text = BEETS_CONFIG_TEMPLATE.read_text(encoding="utf-8")
     rendered = render_beets_config(text, {"BEETS_DIR": dir_, "BEETS_LIBRARY": library,
-                                          "BEETS_IMPORT_LOG": import_log})
+                                          "BEETS_IMPORT_LOG": import_log,
+                                          "DISCOGS_TOKEN": discogs_token.replace('"', "")})
     BEETS_RUNTIME_CONFIG.write_text(rendered, encoding="utf-8")
     return BEETS_RUNTIME_CONFIG
 
@@ -1035,7 +1039,7 @@ def run_beets_first_pass(source: Path) -> None:
         BEETS_DIR.mkdir(parents=True, exist_ok=True)              # beets refuses to start without its log folder
         BEETS_IMPORT_LOG.parent.mkdir(parents=True, exist_ok=True)
         BEETS_LIBRARY.parent.mkdir(parents=True, exist_ok=True)
-        cfg = write_beets_runtime_config(BEETS_DIR, BEETS_LIBRARY, BEETS_IMPORT_LOG)
+        cfg = write_beets_runtime_config(BEETS_DIR, BEETS_LIBRARY, BEETS_IMPORT_LOG, DISCOGS_TOKEN)
         proc = subprocess.Popen([BEET_EXECUTABLE, "-c", str(cfg), "import", *BEET_IMPORT_ARGS, str(source)],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 stdin=subprocess.DEVNULL,   # never hang on a prompt
