@@ -1563,7 +1563,8 @@ class SettingsTab(ttk.Frame):
         for row, (attr, label, key, kind) in enumerate(BEETS_PATH_SETTINGS):
             (folder_row if kind == "dir" else file_row)(bf, label + ":", settings.paths[attr], row)
         ttk.Label(bf, text="The pipeline runs beets with config.yaml, filled with these paths and the Discogs token. Your own beets config is not used.",
-                  foreground=T["muted"]).grid(row=len(BEETS_PATH_SETTINGS), column=1, sticky="w", pady=(4, 0))
+                  foreground=T["muted"], wraplength=640, justify="left"
+                  ).grid(row=len(BEETS_PATH_SETTINGS), column=1, sticky="w", pady=(4, 0))
 
         ttk.Button(self, text="Reset all paths to defaults", command=self.reset_paths).pack(anchor="w", pady=(8, 0))
 
