@@ -765,6 +765,8 @@ def save_settings(data: dict) -> None:
     data = dict(data)
     if not data.get("plex_remember_token"):
         data.pop("plex_token", None)
+    if not data.get("discogs_remember_token"):
+        data.pop("discogs_token", None)
     if SETTINGS_FILE.exists():
         try:
             shutil.copy2(SETTINGS_FILE, SETTINGS_FILE.with_name(SETTINGS_FILE.name + ".bak"))
@@ -788,6 +790,7 @@ def default_settings() -> dict:
         review_write_tags=True, review_scan_incomplete=True,
         plex_url=os.environ.get("PLEX_BASEURL", "http://localhost:32400"),
         plex_token=os.environ.get("PLEX_TOKEN", ""), plex_remember_token=False, plex_tags=DEFAULT_TAGS,
+        discogs_token="", discogs_remember_token=False,
         plex_min_diff=0.0, plex_rule_res=True, plex_rule_fmt=True, plex_rule_suffix=True, plex_rule_tags=True,
         plex_orphans=False, plex_rm_folder=True, plex_refresh=True, plex_map_from="", plex_map_to="",
     )
@@ -801,6 +804,11 @@ def apply_paths_from(values: dict) -> None:
         if v:
             setattr(mp, attr, Path(v))
     mp.PROTECTED_DIRS = (mp.COMPLETE_DIR, mp.INCOMPLETE_DIR, mp.DELETE_DIR, mp.CUE_DEST)
+    # service credentials: an empty value keeps whatever was set before
+    if str(values.get("mb_contact") or "").strip():
+        mp.MB_CONTACT = str(values["mb_contact"]).strip()
+    if str(values.get("discogs_token") or "").strip():
+        mp.DISCOGS_TOKEN = str(values["discogs_token"]).strip()
 
 
 def pipeline_preflight(folder: Path, opts: dict) -> tuple[list[str], list[str]]:
